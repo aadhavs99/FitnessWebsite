@@ -23,7 +23,6 @@ function App() {
     } else {
       alert('Please check your username and password')
     }
-    console.log(data)
   }
 
   return (
