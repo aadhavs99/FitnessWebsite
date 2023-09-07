@@ -23,13 +23,10 @@ app.post('/api/register', async (req, res) => {
     })
     try{
         if(user.email === req.body.email) {
-            console.log("USER FOUND!")
-            console.log("Found email =", user.email)
             return res.json({status: 'error', error: 'Duplicate Email'})
         }
     } catch (error) {
         try {
-            console.log("TRYING TO CREATE!")
             await User.create({
                 username: req.body.username,
                 email: req.body.email,
@@ -38,7 +35,6 @@ app.post('/api/register', async (req, res) => {
                 reps: req.body.reps,
                 logged: req.body.logged,
             })
-            console.log("REGISTRATION SUCCESSFULL")
             return res.json({ status: 'ok'})
         } catch (err) {
             return res.json({ status: 'error', error: 'Could not register'})
@@ -108,7 +104,6 @@ app.post('/api/leaderboard', async (req, res) => {
         serv: true
     })
     tempMap = admin.leaderboard.entries()
-    console.log("tempMap =", tempMap)
     res.json(tempMap)
 })
 
