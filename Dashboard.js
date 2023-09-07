@@ -32,15 +32,10 @@ function App() {
         console.log(data)
     }
     async function getFirstData() {
-        console.log("WAITING")
         const response = await fetch('http://localhost:1337/api/leaderboard', {
             method: 'POST',
         })
         var givenMap = await response.json()
-        console.log("RECIEVED")
-        console.log("response =", response)
-        console.log("type =", (typeof response))
-        console.log("givenMap =", givenMap)
         for (let x in response) {
           console.log("x =", x)
           firstpos += x
@@ -54,7 +49,6 @@ function App() {
         return 0
     }
     function getSecondData(){
-      //console.log("Entered")
       return 0
     }
     getFirstData()
