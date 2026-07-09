@@ -10,6 +10,28 @@ const jwt = require('jsonwebtoken')
 
 mongoose.connect('mongodb+srv://aadhavs99:Subpoofiyaaxd!1@fitnesswebsite.mxmeiyp.mongodb.net/?retryWrites=true&w=majority')
 
+// Secret used to sign/verify session tokens (JWT).
+const JWT_SECRET = 'secret123'
+
+// Verifies the "Authorization: Bearer <token>" header on protected routes.
+// This lets the client stay logged in for the token's lifetime (24h) without
+// resending the email/password on every request.
+function authenticateToken(req, res, next) {
+    const authHeader = req.headers['authorization']
+    const token = authHeader && authHeader.split(' ')[1]
+    if (!token) {
+        return res.status(401).json({ status: 'error', error: 'Missing session token' })
+    }
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+        if (err) {
+            // Covers both an invalid token and an expired one (>24h old).
+            return res.status(403).json({ status: 'error', error: 'Session expired, please log in again' })
+        }
+        req.user = decoded
+        next()
+    })
+}
+
 app.post('/api/register', async (req, res) => {
     count = await User.collection.countDocuments()
     if (count === 0) {
@@ -47,46 +69,47 @@ app.post('/api/login', async (req, res) => {
             email: req.body.email,
             password: req.body.password,
         })
-        console.log(user.logged)
-        const filter = {email: req.body.email, password: req.body.password}
-        const update = {logged: true}
-        diffUser = await User.findOneAndUpdate(filter, update, {
-            new: true
-        })
-        console.log(diffUser.logged)
-        if (user) {
-            const token = jwt.sign({
-                name: user.name,
-                email: user.email,
-            }, 'secret123')
-            return res.json({ status: 'ok', user: token, user})
-        } else {
+        if (!user) {
             return res.json({ status: 'error', user: false})
         }
+        const filter = {email: req.body.email, password: req.body.password}
+        const update = {logged: true}
+        await User.findOneAndUpdate(filter, update, {
+            new: true
+        })
+        // Sign a session token that expires in 24 hours, so the device stays
+        // logged in and doesn't need to resend credentials until then.
+        const token = jwt.sign({
+            username: user.username,
+            email: user.email,
+        }, JWT_SECRET, { expiresIn: '24h' })
+        // Return the token under its own `token` field. Previously this was
+        // returned as `user: token, user` which put the token then
+        // immediately overwrote it with the Mongo user document.
+        return res.json({ status: 'ok', token, user})
 })
 
-app.post('/api/exercise', async (req, res) => {
-    console.log(req.body.email)
-    console.log(req.body.password)
-    count = await User.collection.countDocuments()
-    if (count < 3){
-        admin = await Serv.findOne({
-            serv: true,
-        })
-        admin.updateOne({
-            $set: {
-                [`leaderboard.${user.username}.${req.body.exercise}`]: req.body.reps,
-            }
-        })
-    }
+// Authenticated by session token (see authenticateToken above) instead of
+// email/password, so logging a rep no longer requires re-entering credentials.
+app.post('/api/exercise', authenticateToken, async (req, res) => {
+    // req.user comes from the verified token, not the request body.
     const user = await User.findOne({
-        email: req.body.email,
-        password: req.body.password,
-        logged: true,
+        email: req.user.email,
     })
-    console.log(user)
     try {
-        console.log(user.email)
+        count = await User.collection.countDocuments()
+        if (count < 3){
+            admin = await Serv.findOne({
+                serv: true,
+            })
+            // Moved below the `user` lookup above: this referenced `user`
+            // before it was defined in the original code.
+            await admin.updateOne({
+                $set: {
+                    [`leaderboard.${user.username}.${req.body.exercise}`]: req.body.reps,
+                }
+            })
+        }
         await user.updateOne({
             $push: {
                 ['exercise']: req.body.exercise,

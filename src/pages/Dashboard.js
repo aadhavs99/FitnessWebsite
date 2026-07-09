@@ -1,27 +1,42 @@
-import React, { render, useState } from "react";
-
-
+import React, { render, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 function App() {
+    const navigate = useNavigate()
     const [exercise, setExercise] = useState([])
     const [reps, setReps] = useState([])
-    const [email, setEmail] = useState('')
-    const [password, setPassword] = useState('')
     var firstpos = ""
+
+    // No session token means the user was never logged in on this device;
+    // send them to /login instead of showing a dashboard that can't work.
+    useEffect(() => {
+        if (!localStorage.getItem('token')) {
+            navigate('/login', { replace: true })
+        }
+    }, [navigate])
+
     async function logExercise(event) {
         event.preventDefault()
+        const token = localStorage.getItem('token')
         const response = await fetch('http://localhost:1337/api/exercise', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            // Session token replaces email/password on this request.
+            'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({
             exercise,
             reps,
-            email,
-            password,
           }),
         })
+        if (response.status === 401 || response.status === 403) {
+            // Token missing or expired (>24h old) - clear it and re-prompt login.
+            localStorage.removeItem('token')
+            alert('Your session has expired, please log in again')
+            navigate('/login', { replace: true })
+            return
+        }
         const data = await response.json()
         if (data.status === 'ok') {
             alert('Reps successfully logged')
@@ -64,20 +79,8 @@ function App() {
              <br />
              <input value={reps}
              onChange={(e) => setReps(e.target.value)}
-             type="reps" 
+             type="reps"
              placeholder="Reps"
-             />
-             <br />
-             <input value={email}
-             onChange={(e) => setEmail(e.target.value)}
-             type="email" 
-             placeholder="Email"
-             />
-             <br />
-             <input value={password}
-             onChange={(e) => setPassword(e.target.value)}
-             type="password" 
-             placeholder="Password"
              />
              <br />
              <input type="submit" value="Log" />
