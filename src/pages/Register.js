@@ -6,9 +6,6 @@ function App() {
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const exercise = ['Shoulders']
-  const reps = [4]
-  const logged = false
 
   async function registerUser(event) {
     event.preventDefault()
@@ -21,9 +18,6 @@ function App() {
         username,
         email,
         password,
-        exercise,
-        reps,
-        logged,
       }),
     })
     const data = await response.json()

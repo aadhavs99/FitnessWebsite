@@ -1,11 +1,12 @@
-import React, { render, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 function App() {
     const navigate = useNavigate()
-    const [exercise, setExercise] = useState([])
-    const [reps, setReps] = useState([])
-    var firstpos = ""
+    const [exercise, setExercise] = useState('')
+    const [reps, setReps] = useState('')
+    const [lifetime, setLifetime] = useState([])
+    const [dailyAverage, setDailyAverage] = useState([])
 
     // No session token means the user was never logged in on this device;
     // send them to /login instead of showing a dashboard that can't work.
@@ -14,6 +15,19 @@ function App() {
             navigate('/login', { replace: true })
         }
     }, [navigate])
+
+    useEffect(() => {
+        fetchLeaderboards()
+    }, [])
+
+    async function fetchLeaderboards() {
+        const response = await fetch('http://localhost:1337/api/leaderboard', {
+            method: 'POST',
+        })
+        const data = await response.json()
+        setLifetime(data.lifetime || [])
+        setDailyAverage(data.dailyAverage || [])
+    }
 
     async function logExercise(event) {
         event.preventDefault()
@@ -40,53 +54,64 @@ function App() {
         const data = await response.json()
         if (data.status === 'ok') {
             alert('Reps successfully logged')
-            window.location.href = '/dashboard'
+            setExercise('')
+            setReps('')
+            fetchLeaderboards()
         } else {
           alert(data.error)
         }
-        console.log(data)
     }
-    async function getFirstData() {
-        const response = await fetch('http://localhost:1337/api/leaderboard', {
-            method: 'POST',
-        })
-        var givenMap = await response.json()
-        for (let x in response) {
-          console.log("x =", x)
-          firstpos += x
-          console.log("new1 firstpos =", firstpos)
-          for (let y in x){
-            firstpos += y
-            console.log("new2 firstpos =", firstpos)
-          }
-        }
-        console.log("firstpos =", firstpos)
-        return 0
-    }
-    function getSecondData(){
-      return 0
-    }
-    getFirstData()
+
     return (
         <div>
            <h1>Log</h1>
            <form onSubmit={logExercise}>
              <input value={exercise}
              onChange={(e) => setExercise(e.target.value)}
-             type="exercise" 
+             type="text"
              placeholder="Exercise"
              />
              <br />
              <input value={reps}
              onChange={(e) => setReps(e.target.value)}
-             type="reps"
+             type="number"
              placeholder="Reps"
              />
              <br />
              <input type="submit" value="Log" />
            </form>
-           <h1>LEADERBOARD:</h1>
-           <h1>1. {firstpos}</h1>
+
+           <h1>LEADERBOARD - LIFETIME TOTAL</h1>
+           <table>
+             <thead>
+               <tr><th>Name</th><th>Exercise</th><th>Reps</th></tr>
+             </thead>
+             <tbody>
+               {lifetime.map((row, i) => (
+                 <tr key={i}>
+                   <td>{row.username}</td>
+                   <td>{row.exercise}</td>
+                   <td>{row.reps}</td>
+                 </tr>
+               ))}
+             </tbody>
+           </table>
+
+           <h1>LEADERBOARD - DAILY AVERAGE (PAST YEAR)</h1>
+           <table>
+             <thead>
+               <tr><th>Name</th><th>Exercise</th><th>Reps/Day</th></tr>
+             </thead>
+             <tbody>
+               {dailyAverage.map((row, i) => (
+                 <tr key={i}>
+                   <td>{row.username}</td>
+                   <td>{row.exercise}</td>
+                   <td>{row.reps.toFixed(2)}</td>
+                 </tr>
+               ))}
+             </tbody>
+           </table>
         </div>
        )
 }
