@@ -5,9 +5,26 @@ const tableStyle = { width: '100%', tableLayout: 'fixed', borderCollapse: 'colla
 const headerCellStyle = { textAlign: 'left', padding: '16px 32px', borderBottom: '2px solid #333' }
 const cellStyle = { padding: '16px 32px', borderBottom: '1px solid #ccc' }
 
+// Fixed list so every logged entry matches a canonical name on the
+// leaderboard instead of being split across free-text misspellings.
+const BODYWEIGHT_EXERCISES = [
+    'Push-ups',
+    'Pull-ups',
+    'Chin-ups',
+    'Dips',
+    'Squats',
+    'Lunges',
+    'Sit-ups',
+    'Crunches',
+    'Plank',
+    'Burpees',
+    'Mountain Climbers',
+    'Jumping Jacks',
+]
+
 function App() {
     const navigate = useNavigate()
-    const [exercise, setExercise] = useState('')
+    const [exercise, setExercise] = useState(BODYWEIGHT_EXERCISES[0])
     const [reps, setReps] = useState('')
     const [lifetime, setLifetime] = useState([])
     const [dailyAverage, setDailyAverage] = useState([])
@@ -58,7 +75,7 @@ function App() {
         const data = await response.json()
         if (data.status === 'ok') {
             alert('Reps successfully logged')
-            setExercise('')
+            setExercise(BODYWEIGHT_EXERCISES[0])
             setReps('')
             fetchLeaderboards()
         } else {
@@ -70,11 +87,13 @@ function App() {
         <div>
            <h1>Log</h1>
            <form onSubmit={logExercise}>
-             <input value={exercise}
+             <select value={exercise}
              onChange={(e) => setExercise(e.target.value)}
-             type="text"
-             placeholder="Exercise"
-             />
+             >
+               {BODYWEIGHT_EXERCISES.map((name) => (
+                 <option key={name} value={name}>{name}</option>
+               ))}
+             </select>
              <br />
              <input value={reps}
              onChange={(e) => setReps(e.target.value)}
