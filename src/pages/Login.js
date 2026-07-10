@@ -18,6 +18,9 @@ function App() {
     })
     const data = await response.json()
     if (data.status === 'ok') {
+      // Persist the 24h session token so the dashboard can authenticate
+      // without asking for email/password again.
+      localStorage.setItem('token', data.token)
       alert('Login successful')
       window.location.href = '/dashboard'
     } else {
