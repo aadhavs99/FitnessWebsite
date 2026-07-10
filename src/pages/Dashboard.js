@@ -74,7 +74,6 @@ function App() {
         }
         const data = await response.json()
         if (data.status === 'ok') {
-            alert('Reps successfully logged')
             setExercise(BODYWEIGHT_EXERCISES[0])
             setReps('')
             fetchLeaderboards()
