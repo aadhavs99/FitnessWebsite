@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
+const tableStyle = { width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: '1.5rem' }
+const headerCellStyle = { textAlign: 'left', padding: '16px 32px', borderBottom: '2px solid #333' }
+const cellStyle = { padding: '16px 32px', borderBottom: '1px solid #ccc' }
+
 function App() {
     const navigate = useNavigate()
     const [exercise, setExercise] = useState('')
@@ -82,32 +86,40 @@ function App() {
            </form>
 
            <h1>LEADERBOARD - LIFETIME TOTAL</h1>
-           <table>
+           <table style={tableStyle}>
              <thead>
-               <tr><th>Name</th><th>Exercise</th><th>Reps</th></tr>
+               <tr>
+                 <th style={headerCellStyle}>Name</th>
+                 <th style={headerCellStyle}>Exercise</th>
+                 <th style={headerCellStyle}>Reps</th>
+               </tr>
              </thead>
              <tbody>
                {lifetime.map((row, i) => (
                  <tr key={i}>
-                   <td>{row.username}</td>
-                   <td>{row.exercise}</td>
-                   <td>{row.reps}</td>
+                   <td style={cellStyle}>{row.username}</td>
+                   <td style={cellStyle}>{row.exercise}</td>
+                   <td style={cellStyle}>{row.reps}</td>
                  </tr>
                ))}
              </tbody>
            </table>
 
            <h1>LEADERBOARD - DAILY AVERAGE (PAST YEAR)</h1>
-           <table>
+           <table style={tableStyle}>
              <thead>
-               <tr><th>Name</th><th>Exercise</th><th>Reps/Day</th></tr>
+               <tr>
+                 <th style={headerCellStyle}>Name</th>
+                 <th style={headerCellStyle}>Exercise</th>
+                 <th style={headerCellStyle}>Reps/Day</th>
+               </tr>
              </thead>
              <tbody>
                {dailyAverage.map((row, i) => (
                  <tr key={i}>
-                   <td>{row.username}</td>
-                   <td>{row.exercise}</td>
-                   <td>{row.reps.toFixed(2)}</td>
+                   <td style={cellStyle}>{row.username}</td>
+                   <td style={cellStyle}>{row.exercise}</td>
+                   <td style={cellStyle}>{row.reps.toFixed(2)}</td>
                  </tr>
                ))}
              </tbody>
