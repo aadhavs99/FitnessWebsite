@@ -2,7 +2,6 @@ const express = require('express')
 const app = express()
 const cors = require('cors')
 const User = require('./models/user.model')
-const Serv = require('./models/server.data')
 app.use(cors())
 app.use(express.json())
 const mongoose = require('mongoose')
@@ -33,34 +32,23 @@ function authenticateToken(req, res, next) {
 }
 
 app.post('/api/register', async (req, res) => {
-    count = await User.collection.countDocuments()
-    if (count === 0) {
-        await Serv.create({
-            serv: true,
-            leaderboard: {"Nobody": {"Nothing": 0}},
-        })
-    }
     const user = await User.findOne({
         email: req.body.email,
     })
-    try{
-        if(user.email === req.body.email) {
-            return res.json({status: 'error', error: 'Duplicate Email'})
-        }
-    } catch (error) {
-        try {
-            await User.create({
-                username: req.body.username,
-                email: req.body.email,
-                password: req.body.password,
-                exercise: req.body.exercise,
-                reps: req.body.reps,
-                logged: req.body.logged,
-            })
-            return res.json({ status: 'ok'})
-        } catch (err) {
-            return res.json({ status: 'error', error: 'Could not register'})
-        }
+    if (user) {
+        return res.json({status: 'error', error: 'Duplicate Email'})
+    }
+    try {
+        await User.create({
+            username: req.body.username,
+            email: req.body.email,
+            password: req.body.password,
+            logs: [],
+            logged: false,
+        })
+        return res.json({ status: 'ok'})
+    } catch (err) {
+        return res.json({ status: 'error', error: 'Could not register'})
     }
 })
 
@@ -97,23 +85,13 @@ app.post('/api/exercise', authenticateToken, async (req, res) => {
         email: req.user.email,
     })
     try {
-        count = await User.collection.countDocuments()
-        if (count < 3){
-            admin = await Serv.findOne({
-                serv: true,
-            })
-            // Moved below the `user` lookup above: this referenced `user`
-            // before it was defined in the original code.
-            await admin.updateOne({
-                $set: {
-                    [`leaderboard.${user.username}.${req.body.exercise}`]: req.body.reps,
-                }
-            })
-        }
         await user.updateOne({
             $push: {
-                ['exercise']: req.body.exercise,
-                ['reps']: Number(req.body.reps)
+                logs: {
+                    exercise: req.body.exercise,
+                    reps: Number(req.body.reps),
+                    date: new Date(),
+                }
             }
         })
         res.json({status: 'ok'})
@@ -122,12 +100,35 @@ app.post('/api/exercise', authenticateToken, async (req, res) => {
     }
 })
 
+// Leaderboards are computed on read (not maintained incrementally), so they
+// stay correct as history grows instead of drifting from a hand-updated map.
 app.post('/api/leaderboard', async (req, res) => {
-    const admin = await Serv.findOne({
-        serv: true
-    })
-    tempMap = admin.leaderboard.entries()
-    res.json(tempMap)
+    const oneYearAgo = new Date()
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+
+    const lifetime = await User.aggregate([
+        { $unwind: '$logs' },
+        { $group: {
+            _id: { username: '$username', exercise: '$logs.exercise' },
+            reps: { $sum: '$logs.reps' },
+        }},
+        { $project: { _id: 0, username: '$_id.username', exercise: '$_id.exercise', reps: 1 } },
+        { $sort: { reps: -1 } },
+    ])
+
+    // Reps logged within the trailing year, averaged over 365 days.
+    const dailyAverage = await User.aggregate([
+        { $unwind: '$logs' },
+        { $match: { 'logs.date': { $gte: oneYearAgo } } },
+        { $group: {
+            _id: { username: '$username', exercise: '$logs.exercise' },
+            reps: { $sum: '$logs.reps' },
+        }},
+        { $project: { _id: 0, username: '$_id.username', exercise: '$_id.exercise', reps: { $divide: ['$reps', 365] } } },
+        { $sort: { reps: -1 } },
+    ])
+
+    res.json({ status: 'ok', lifetime, dailyAverage })
 })
 
 app.listen(1337, () => {

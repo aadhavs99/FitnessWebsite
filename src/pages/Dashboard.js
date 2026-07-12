@@ -1,11 +1,33 @@
-import React, { render, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+
+const tableStyle = { width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: '1.5rem' }
+const headerCellStyle = { textAlign: 'left', padding: '16px 32px', borderBottom: '2px solid #333' }
+const cellStyle = { padding: '16px 32px', borderBottom: '1px solid #ccc' }
+
+// Fixed list so every logged entry matches a canonical name on the
+// leaderboard instead of being split across free-text misspellings.
+const BODYWEIGHT_EXERCISES = [
+    'Push-ups',
+    'Pull-ups',
+    'Chin-ups',
+    'Dips',
+    'Squats',
+    'Lunges',
+    'Sit-ups',
+    'Crunches',
+    'Plank',
+    'Burpees',
+    'Mountain Climbers',
+    'Jumping Jacks',
+]
 
 function App() {
     const navigate = useNavigate()
-    const [exercise, setExercise] = useState([])
-    const [reps, setReps] = useState([])
-    var firstpos = ""
+    const [exercise, setExercise] = useState(BODYWEIGHT_EXERCISES[0])
+    const [reps, setReps] = useState('')
+    const [lifetime, setLifetime] = useState([])
+    const [dailyAverage, setDailyAverage] = useState([])
 
     // No session token means the user was never logged in on this device;
     // send them to /login instead of showing a dashboard that can't work.
@@ -14,6 +36,19 @@ function App() {
             navigate('/login', { replace: true })
         }
     }, [navigate])
+
+    useEffect(() => {
+        fetchLeaderboards()
+    }, [])
+
+    async function fetchLeaderboards() {
+        const response = await fetch('http://localhost:1337/api/leaderboard', {
+            method: 'POST',
+        })
+        const data = await response.json()
+        setLifetime(data.lifetime || [])
+        setDailyAverage(data.dailyAverage || [])
+    }
 
     async function logExercise(event) {
         event.preventDefault()
@@ -39,54 +74,74 @@ function App() {
         }
         const data = await response.json()
         if (data.status === 'ok') {
-            alert('Reps successfully logged')
-            window.location.href = '/dashboard'
+            setExercise(BODYWEIGHT_EXERCISES[0])
+            setReps('')
+            fetchLeaderboards()
         } else {
           alert(data.error)
         }
-        console.log(data)
     }
-    async function getFirstData() {
-        const response = await fetch('http://localhost:1337/api/leaderboard', {
-            method: 'POST',
-        })
-        var givenMap = await response.json()
-        for (let x in response) {
-          console.log("x =", x)
-          firstpos += x
-          console.log("new1 firstpos =", firstpos)
-          for (let y in x){
-            firstpos += y
-            console.log("new2 firstpos =", firstpos)
-          }
-        }
-        console.log("firstpos =", firstpos)
-        return 0
-    }
-    function getSecondData(){
-      return 0
-    }
-    getFirstData()
+
     return (
         <div>
            <h1>Log</h1>
            <form onSubmit={logExercise}>
-             <input value={exercise}
+             <select value={exercise}
              onChange={(e) => setExercise(e.target.value)}
-             type="exercise" 
-             placeholder="Exercise"
-             />
+             >
+               {BODYWEIGHT_EXERCISES.map((name) => (
+                 <option key={name} value={name}>{name}</option>
+               ))}
+             </select>
              <br />
              <input value={reps}
              onChange={(e) => setReps(e.target.value)}
-             type="reps"
+             type="number"
              placeholder="Reps"
              />
              <br />
              <input type="submit" value="Log" />
            </form>
-           <h1>LEADERBOARD:</h1>
-           <h1>1. {firstpos}</h1>
+
+           <h1>LEADERBOARD - LIFETIME TOTAL</h1>
+           <table style={tableStyle}>
+             <thead>
+               <tr>
+                 <th style={headerCellStyle}>Name</th>
+                 <th style={headerCellStyle}>Exercise</th>
+                 <th style={headerCellStyle}>Reps</th>
+               </tr>
+             </thead>
+             <tbody>
+               {lifetime.map((row, i) => (
+                 <tr key={i}>
+                   <td style={cellStyle}>{row.username}</td>
+                   <td style={cellStyle}>{row.exercise}</td>
+                   <td style={cellStyle}>{row.reps}</td>
+                 </tr>
+               ))}
+             </tbody>
+           </table>
+
+           <h1>LEADERBOARD - DAILY AVERAGE (PAST YEAR)</h1>
+           <table style={tableStyle}>
+             <thead>
+               <tr>
+                 <th style={headerCellStyle}>Name</th>
+                 <th style={headerCellStyle}>Exercise</th>
+                 <th style={headerCellStyle}>Reps/Day</th>
+               </tr>
+             </thead>
+             <tbody>
+               {dailyAverage.map((row, i) => (
+                 <tr key={i}>
+                   <td style={cellStyle}>{row.username}</td>
+                   <td style={cellStyle}>{row.exercise}</td>
+                   <td style={cellStyle}>{row.reps.toFixed(2)}</td>
+                 </tr>
+               ))}
+             </tbody>
+           </table>
         </div>
        )
 }
