@@ -100,6 +100,17 @@ app.post('/api/exercise', authenticateToken, async (req, res) => {
     }
 })
 
+// Returns the authenticated user's own exercise history, sorted oldest to
+// newest, so the client can chart it / fit a trend line without exposing
+// other users' logs.
+app.post('/api/mydata', authenticateToken, async (req, res) => {
+    const user = await User.findOne({
+        email: req.user.email,
+    })
+    const logs = [...user.logs].sort((a, b) => new Date(a.date) - new Date(b.date))
+    res.json({ status: 'ok', username: user.username, logs })
+})
+
 // Leaderboards are computed on read (not maintained incrementally), so they
 // stay correct as history grows instead of drifting from a hand-updated map.
 app.post('/api/leaderboard', async (req, res) => {

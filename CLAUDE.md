@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 A minimal fitness-tracking app: users register/log in, log exercises with rep counts, and see a shared leaderboard. Two independent halves live in the same `package.json`/repo:
 
 - **Backend**: single-file Express API (`index.js`) with Mongoose models (`models/`), talking to MongoDB Atlas.
-- **Frontend**: Create React App SPA (`src/`) with three routed pages (`src/pages/`).
+- **Frontend**: Create React App SPA (`src/`) with routed pages (`src/pages/`) and shared components (`src/components/`).
 
 There is no shared build step between them — they are started separately (see Commands) and communicate over HTTP, with the frontend hardcoded to call `http://localhost:1337`.
 
@@ -35,6 +35,7 @@ Everything — routes, auth middleware, and the Mongo connection — lives in th
   - `POST /api/login` — verifies email/password against Mongo (plaintext comparison, no hashing), flips `logged: true`, and returns a signed JWT plus the raw user document.
   - `POST /api/exercise` — authenticated. Looks up the user from the verified token (not the request body) and pushes a `{ exercise, reps, date }` entry onto `user.logs`.
   - `POST /api/leaderboard` — unauthenticated, computed on read via two Mongoose aggregation pipelines over all users' `logs` (no incrementally-maintained leaderboard document): `lifetime` sums reps per `username`+`exercise` across all history; `dailyAverage` sums reps per `username`+`exercise` logged within the trailing 365 days and divides by 365. Both are sorted descending and returned as flat arrays of `{ username, exercise, reps }`.
+  - `POST /api/mydata` — authenticated. Returns the requesting user's own `logs`, sorted oldest-to-newest, for the Predict page's history table and regression input. Doesn't touch other users' data.
 
 ### Data models (`models/`)
 
@@ -42,7 +43,10 @@ Everything — routes, auth middleware, and the Mongo connection — lives in th
 
 ### Frontend (`src/`)
 
-- `App.js` — top-level router (`react-router-dom`) with three routes: `/login`, `/register`, `/dashboard`. No route guards other than `Dashboard`'s own check.
+- `App.js` — top-level router (`react-router-dom`) with routes: `/login`, `/register`, `/dashboard`, `/predict`. No route guards other than each page's own token check.
+- `styles.js` — shared inline-style objects (`tableStyle`, `headerCellStyle`, `cellStyle`) used by every page that renders a table. The app has no CSS files anywhere; all styling is inline `style={}` props.
 - `pages/Login.js`, `pages/Register.js` — plain fetch calls to the backend; on success, `Login` stores the JWT in `localStorage` under `token`.
-- `pages/Dashboard.js` — redirects to `/login` if no token is present; sends the stored token as a `Bearer` header when logging exercises; clears the token and redirects on a 401/403 (expired/missing session). Fetches `/api/leaderboard` on mount and after each successful log, and renders the `lifetime` and `dailyAverage` arrays as two tables.
+- `pages/Dashboard.js` — redirects to `/login` if no token is present; logs an exercise via a `<select>` of fixed canonical bodyweight-exercise names (`BODYWEIGHT_EXERCISES`, defined in this file) rather than free text, so leaderboard entries can't fragment across misspellings; sends the stored token as a `Bearer` header when logging; clears the token and redirects on a 401/403. Fetches `/api/leaderboard` on mount and after each successful log, and renders the `lifetime` and `dailyAverage` arrays as two tables.
+- `pages/Predict.js` — same token-guard pattern. Fetches the user's own history via `/api/mydata`, summarizes it per exercise into a table, and on clicking "Predict" fits an ordinary-least-squares line (`linearRegression`, defined in this file) to the selected exercise's `{days since first session, reps}` points, then projects it forward 12 weekly points. Renders the result with `components/PredictionChart.js`. Needs ≥2 logged sessions of an exercise to fit a trend — shows an inline error otherwise.
+- `components/PredictionChart.js` — hand-rolled SVG line chart (no charting library dependency). One hue for the whole metric; the observed segment is a solid line, the projected segment is the same hue dashed, joined at a shared connector point. Includes a hover crosshair/tooltip; `Predict.js` renders the accompanying data table itself rather than the chart component doing so.
 - All API calls use absolute `http://localhost:1337` URLs rather than a relative path or env-configured base — backend host/port changes require updating each page.

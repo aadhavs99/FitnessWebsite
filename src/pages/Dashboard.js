@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-
-const tableStyle = { width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: '1.5rem' }
-const headerCellStyle = { textAlign: 'left', padding: '16px 32px', borderBottom: '2px solid #333' }
-const cellStyle = { padding: '16px 32px', borderBottom: '1px solid #ccc' }
+import { Link, useNavigate } from "react-router-dom";
+import { tableStyle, headerCellStyle, cellStyle } from "../styles";
 
 // Fixed list so every logged entry matches a canonical name on the
 // leaderboard instead of being split across free-text misspellings.
@@ -84,6 +81,12 @@ function App() {
 
     return (
         <div>
+           <nav style={{ marginBottom: 24, fontSize: '1.1rem' }}>
+             <Link to="/dashboard">Dashboard</Link>
+             {' · '}
+             <Link to="/predict">Predict</Link>
+           </nav>
+
            <h1>Log</h1>
            <form onSubmit={logExercise}>
              <select value={exercise}
